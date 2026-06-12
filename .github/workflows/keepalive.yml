@@ -1,0 +1,29 @@
+name: keepalive
+
+# Mantem a API do Render acordada (plano gratis dorme apos 15 min sem trafego).
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # ping a cada 10 min
+    - cron: "0 3 1 * *"      # 1x por mes: commit pra GitHub nao desativar o cron (regra dos 60 dias)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 60 https://sylision-api.onrender.com/health || true
+
+  touch:
+    if: github.event.schedule == '0 3 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          date -u > last-alive.txt
+          git config user.name "keepalive-bot"
+          git config user.email "actions@github.com"
+          git add last-alive.txt
+          git commit -m "keepalive: mantem cron ativo" && git push || true
